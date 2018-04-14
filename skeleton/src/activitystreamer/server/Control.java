@@ -170,8 +170,11 @@ public class Control extends Thread {
 						break;
 					}
 				}
+				if(redirect == true) { // redirect message
+					con.writeMsg(redir.toString());
+					return true;
+				}
 			
-				
 				if(username!=null) {
 					// userName is anonymous 
 					if(username != null && username.compareTo("anonymous")==0) {
@@ -181,9 +184,7 @@ public class Control extends Thread {
 						res.put("command", "LOGIN_SUCCESS");
 						res.put("info", "logged in as user anonymous");
 						con.writeMsg(res.toString());
-						if(redirect == true) { // redirect message
-							con.writeMsg(redir.toString());
-						}
+					
 						return false;
 					}
 					// userName is not anonymous  
@@ -199,9 +200,7 @@ public class Control extends Thread {
 								res.put("command", "LOGIN_SUCCESS");
 								res.put("info", "logged in as user "+ username);
 								con.writeMsg(res.toString());
-								if(redirect == true) {  // redirect message
-									con.writeMsg(redir.toString());
-								}
+							
 								return false;
 							}
 							//incorrect secret
