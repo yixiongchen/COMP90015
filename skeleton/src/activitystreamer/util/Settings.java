@@ -21,15 +21,16 @@ public class Settings {
 	private static int activityInterval = 5000; // milliseconds
 	private static String secret = null;
 	private static String username = "anonymous";
+	
+	/*
+	 * server
+	 */
 	// record authenticated servers
 	private static List<String> authenticatedServers = new ArrayList<String>();
-	
-	// server announce
 	// server's id
 	private static String serverId = nextSecret();
 	// server's load
     private static int load = 0;
-    
     // record server's id and load -- map<server's id , load>
     private static Map<String, Integer> load_data = new HashMap<String, Integer>();
     // record server's id and hostName, Port number--map<server's id , hostName>
@@ -37,12 +38,24 @@ public class Settings {
     // record server's id and PortNum, Port number--map<server's id , portNum>
     private static Map<String, Integer> port_data = new HashMap<String, Integer>();
     
-    
-    //all registered users in the server
+    /*
+     * client register
+     */
+    //registered users in the local storage(userName, secret)
     private static Map<String, String> users_profile = new HashMap<String, String>();
     
-    //users already logged into the server
-    private static List<String> logged_users = new ArrayList<String>();
+    //userName and secret request to register  (userName, secret)
+    private static Map<String, String> request_registers = new HashMap<String, String>();
+    //userName from connection socketAddress request to register (userName, socketAddress )
+    private static Map<String, String> request_sockets = new HashMap<String, String>();
+    //lock request list  (userName, num_of_lock_allowed)
+    private static Map<String, Integer> lock_request = new HashMap<String, Integer>();
+    
+    /*
+     * client login
+     */
+    //users already logged into the server(socketAddress, userName)
+    private static Map<String, String> logged_users = new HashMap<String, String>();
     
     
     
@@ -60,6 +73,25 @@ public class Settings {
     public static int getLoad() {
     	
     	return load;
+    }
+    
+    /*
+     * add one connected client
+     */
+    public static void addLoad() {
+    	
+    	load = load + 1;
+    }
+    
+    /*
+     * add one connected client
+     */
+    public static void removeLoad() {
+    	
+    	if(load != 0) {
+    		load = load - 1;
+    	}
+    
     }
     
     /*
@@ -148,24 +180,114 @@ public class Settings {
 	};
 	
 	/*
-	 * return all login clients
+	 * return all pairs (userName, secret) that request to register
 	 */
-	public static List<String> getLoggedUsers(){
+	public static Map<String, String> getRequestRegisters(){
+		return request_registers;
+	}
+	
+	/*
+	 * add a pair (userName, secret) that request to register
+	 */
+	public static void addRequestRegister(String username, String secret) {
+		request_registers.put(username, username);
+	}
+	
+	/*
+	 * remove a pair (userName, secret) that request to register
+	 */
+	public static void removeRequestRegister(String username) {
+		request_registers.remove(username);
+	}
+	
+	/*
+	 * return all pairs (userName, socketAddress) that request to register
+	 */
+	public static Map<String, String> getRequestSockets(){
+		return request_sockets;
+	}
+	
+	/*
+	 * add a pair (userName, socketAddress) that request to register
+	 */
+	public static void addRequestSocket(String username, String socketAddress) {
+		request_sockets.put(username, socketAddress);
+	}
+	
+	/*
+	 * remove a pair (socketAddress, secret)  in lock request
+	 */
+	public static void removeRequestSocket(String username) {
+		
+		request_sockets.remove(username);
+	}
+	
+	
+	/*
+	 * return all pairs that record the number of lock allowed received  
+	 */
+	public static Map<String, Integer> getLockRequest(){
+		
+		return lock_request;
+	}
+	
+	/*
+	 * add a pair (userName, 0) in lock request 
+	 */
+	public static void addLockRequest(String userName) {
+		
+		lock_request.put(userName, 0);
+		
+	}
+	
+	/*
+	 * increment the number of lock allowed with username
+	 */
+	public static void addLockAllowed(String userName) {
+		
+		int num = lock_request.get(userName);
+		lock_request.put(userName, num+1);
+		
+	}
+	
+	/*
+	 * remove a pair in lock request 
+	 */
+	public static void removeLockRequest(String username) {
+		
+		lock_request.remove(username);
+		
+	}
+	
+	
+	/*
+	 * return all logged clients
+	 */
+	public static Map<String, String> getLoggedUsers(){
 		
 		return logged_users;
 	}
 	
 	/*
-	 * add a client into login list
+	 * add a user into logged with its socketAddress
 	 */
-	public static boolean addLoggedUsers(String username){
-		if(logged_users.contains(username)) {
-			return false;
-		}
-		else {
-			logged_users.add(username);
-			return true;
-		}
+	public static void addLoggedUser(String socketAddress, String username){
+		
+		logged_users.put(socketAddress, username);
+			
+	}
+	
+	/*
+	 * remove a user from logged status 
+	 */
+	public static void removeLoggedUser(String socketAddress){
+    	if(logged_users.containsKey(socketAddress)) {
+    		logged_users.remove(socketAddress);
+    	}
+    	else {
+    		log.error("can not log out a user from " + socketAddress);
+    	}
+    	
 	}
 	
 	

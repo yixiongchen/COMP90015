@@ -28,7 +28,7 @@ public class Listener extends Thread{
 			Socket clientSocket;
 			try {
 				clientSocket = serverSocket.accept();
-				System.out.println(clientSocket.getPort());
+				//System.out.println(clientSocket.getPort());
 				Control.getInstance().incomingConnection(clientSocket);
 			} catch (IOException e) {
 				log.info("received exception, shutting down");
