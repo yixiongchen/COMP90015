@@ -260,6 +260,7 @@ public class Control extends Thread {
 					}
 					// user is anonymous
 					if(username.compareTo("anonymous")==0){
+						//process activity
 						log.info("Activity object: "+activity+" from client "+ username);
 						flag = true;
 					}
@@ -269,6 +270,7 @@ public class Control extends Thread {
 							// username and secret match
 							if(Settings.getUserProfile().containsKey(username)&&
 									Settings.getUserProfile().get(username).compareTo(secret)==0) {
+								//process activity
 								log.info("Activity object: "+activity+" from client "+ username);
 								flag = true;
 							}
