@@ -22,15 +22,17 @@ public class Settings {
 	private static String secret = null;
 	private static String username = "anonymous";
 	
-	/*
-	 * server
-	 */
-	// record authenticated servers
+	
+	// authenticated servers list
 	private static List<String> authenticatedServers = new ArrayList<String>();
 	// server's id
 	private static String serverId = nextSecret();
 	// server's load
     private static int load = 0;
+    
+    /*
+	 * server announcement
+	 */
     // record server's id and load -- map<server's id , load>
     private static Map<String, Integer> load_data = new HashMap<String, Integer>();
     // record server's id and hostName, Port number--map<server's id , hostName>
@@ -42,7 +44,7 @@ public class Settings {
      * client register
      */
     //registered users in the local storage(userName, secret)
-    private static Map<String, String> users_profile = new HashMap<String, String>();
+    private static Map<String, String> registered_users = new HashMap<String, String>();
     
     //userName and secret request to register  (userName, secret)
     private static Map<String, String> request_registers = new HashMap<String, String>();
@@ -120,7 +122,7 @@ public class Settings {
     
     
     /*
-     *  Record information from Json packet in server announce
+     *  Record information from server announce packet
      */
 	public static void addServerAnounce(String serverId, int load, String hostName, int portNum){
 		if (load_data.containsKey(serverId)){
@@ -162,7 +164,7 @@ public class Settings {
 	 */
 	public static Map<String, String> getUserProfile(){
 		
-		return users_profile;
+		return registered_users;
 	};
 	
 	/*
@@ -170,11 +172,11 @@ public class Settings {
 	 */
     public static boolean addUser(String name, String secret){
 		
-    	if(users_profile.containsKey(name)) {
+    	if(registered_users.containsKey(name)) {
     		return false;
     	}
     	else {
-    		users_profile.put(name, secret);
+    		registered_users.put(name, secret);
     		return true;
     	}
 	};
@@ -190,7 +192,7 @@ public class Settings {
 	 * add a pair (userName, secret) that request to register
 	 */
 	public static void addRequestRegister(String username, String secret) {
-		request_registers.put(username, username);
+		request_registers.put(username, secret);
 	}
 	
 	/*
@@ -215,7 +217,7 @@ public class Settings {
 	}
 	
 	/*
-	 * remove a pair (socketAddress, secret)  in lock request
+	 * remove a pair (userName, socketAddress)  in lock request
 	 */
 	public static void removeRequestSocket(String username) {
 		

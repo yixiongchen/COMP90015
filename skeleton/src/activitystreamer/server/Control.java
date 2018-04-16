@@ -170,7 +170,8 @@ public class Control extends Thread {
 						break;
 					}
 				}
-				if(redirect == true) { // redirect message
+				// send redirect message and close connection
+				if(redirect == true) { 
 					con.writeMsg(redir.toString());
 					return true;
 				}
@@ -267,8 +268,8 @@ public class Control extends Thread {
 					// username and secret
 					else {
 						if(secret!=null) {
-							// username and secret match
-							if(Settings.getUserProfile().containsKey(username)&&
+							// userName is logged and secret is matched
+							if(Settings.getLoggedUsers().get(socketAddress).compareTo(username)==0 &&
 									Settings.getUserProfile().get(username).compareTo(secret)==0) {
 								//process activity
 								log.info("Activity object: "+activity+" from client "+ username);
@@ -317,10 +318,7 @@ public class Control extends Thread {
 					if(activity != null) {
 						//broadcast to connected servers and clients
 						for (int i =0; i<connections.size(); i++) {
-							String socket_info = Settings.socketAddress(connections.get(i).getSocket());
-							if( socket_info.compareTo(socketAddress) != 0){
 								connections.get(i).writeMsg(msg);
-							}	
 						}
 						//process activity
 						JSONObject json_activity = (JSONObject) parser.parse(activity);
@@ -591,6 +589,8 @@ public class Control extends Thread {
 			//known to the server with a different secret.
 			//Q: When a server receives this message, it will remove the username from its local storage only if the secret
 			//matches the associated secret in its local storage.
+			//Q: if receiving a REGISTER
+			//message from a client that has already logged in on this connection. Connection is closed by server
 			
 			
 			
