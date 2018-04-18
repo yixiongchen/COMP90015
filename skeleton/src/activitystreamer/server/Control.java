@@ -63,7 +63,7 @@ public class Control extends Thread {
 		
 		JSONParser parser = new JSONParser();
 		String socketAddress = Settings.socketAddress(con.getSocket());
-		//System.out.println(msg + " from " + Settings.socketAddress(con.getSocket()));
+		System.out.println(msg + " from " + Settings.socketAddress(con.getSocket()));
 		try {
 
 			//parse the command string
@@ -94,7 +94,7 @@ public class Control extends Thread {
 					if(!status) {
 						//System.out.println("already autheticated");
 						response.put("command", "INVALID_MESSAGE");
-						response.put("info", "the received message did not contain a command");
+						response.put("info", "the server had already successfully authenticated");
 						con.writeMsg(response.toString());	
 						return true;
 					}
@@ -145,12 +145,13 @@ public class Control extends Thread {
 				else {
 					JSONObject response = new JSONObject();
 					response.put("command", "INVALID_MESSAGE");
-					response.put("info", "the received message did not contain a command");
+					response.put("info", "the server is not authenticated");
 					con.writeMsg(response.toString());	
 					return true;	
 				}
 			}
 
+			
 			//LOGIN
 			else if(command.compareTo("LOGIN")==0) {
 				String username = (String)json.get("username");
@@ -170,12 +171,7 @@ public class Control extends Thread {
 						break;
 					}
 				}
-				// send redirect message and close connection
-				if(redirect == true) { 
-					con.writeMsg(redir.toString());
-					return true;
-				}
-			
+
 				if(username!=null) {
 					// userName is anonymous 
 					if(username != null && username.compareTo("anonymous")==0) {
@@ -185,6 +181,11 @@ public class Control extends Thread {
 						res.put("command", "LOGIN_SUCCESS");
 						res.put("info", "logged in as user anonymous");
 						con.writeMsg(res.toString());
+						// send redirect message and close connection
+						if(redirect == true) { 
+							con.writeMsg(redir.toString());
+							return true;
+						}
 					
 						return false;
 					}
@@ -193,14 +194,18 @@ public class Control extends Thread {
 						//if username is found in local storage
 						if(Settings.getUserProfile().containsKey(username)){
 							//secret correct 
-							if(secret!=null&&
-									Settings.getUserProfile().get(username).compareTo(secret)==0) {
+							if(secret!=null && Settings.getUserProfile().get(username).compareTo(secret)==0) {
 								// add connect info and user into into logged list
 								Settings.addLoggedUser(socketAddress, username);
 								Settings.addLoad(); // add one connected client
 								res.put("command", "LOGIN_SUCCESS");
 								res.put("info", "logged in as user "+ username);
 								con.writeMsg(res.toString());
+								// send redirect message and close connection
+								if(redirect == true) { 
+									con.writeMsg(redir.toString());
+									return true;
+								}
 							
 								return false;
 							}
@@ -223,13 +228,13 @@ public class Control extends Thread {
 				}
 				else {
 					res.put("command", "INVALID_MESSAGE");
-					res.put("info", "the received message did not contain a command");
+					res.put("info", "username filed can not be null");
 					con.writeMsg(res.toString());	
 					return true;	
 					
 				}
 			}
-			
+
 			
 			//LOGOUT
 			else if(command.compareTo("LOGOUT")==0){
@@ -248,7 +253,7 @@ public class Control extends Thread {
 			else if(command.compareTo("ACTIVITY_MESSAGE")==0){
 				String username = (String)json.get("username");
 				String secret = (String)json.get("secret");
-				String activity = (String)json.get("activity");
+				JSONObject activity = (JSONObject)json.get("activity");
 				JSONObject response = new JSONObject();
 				boolean flag = false;
 				if(username != null &&  activity != null){
@@ -262,45 +267,53 @@ public class Control extends Thread {
 					// user is anonymous
 					if(username.compareTo("anonymous")==0){
 						//process activity
-						log.info("Activity object: "+activity+" from client "+ username);
+						log.info("Activity object: "+activity.toString()+" from client "+ username);
 						flag = true;
 					}
 					// username and secret
 					else {
 						if(secret!=null) {
-							// userName is logged and secret is matched
+							// userName is logged and secret match
 							if(Settings.getLoggedUsers().get(socketAddress).compareTo(username)==0 &&
 									Settings.getUserProfile().get(username).compareTo(secret)==0) {
 								//process activity
-								log.info("Activity object: "+activity+" from client "+ username);
+								log.info("Activity object: "+activity.toString()+" from client "+ username);
 								flag = true;
+							}
+							//username and secret not match
+							else {
+								response.put("command", "AUTHENTICATION_FAIL");
+								response.put("info",  "the supplied secret is incorrect: "+secret);
+								con.writeMsg(response.toString());	
+								return true;	
 							}
 						}
 						else{
 							response.put("command", "INVALID_MESSAGE");
-							response.put("info", "the received message did not contain a command");
+							response.put("info", "the filed secret can not be null");
 							con.writeMsg(response.toString());	
 							return true;
 						}
 					}
-					//broadcast activity to connected servers and clients
+					//broadcast activity to connected servers and clients (logged users)
 					if(flag==true) {
-						JSONObject new_activity = (JSONObject) parser.parse(activity);
-						new_activity.put("authenticated_user", socketAddress);
-						json.put("activity", new_activity.toString());
-						//broadcast server_announce to every connected servers
+						JSONObject broadcast = new JSONObject();
+						activity.put("authenticated_user", username);
+						broadcast.put("command", "ACTIVITY_BROADCAST");
+						broadcast.put("activity", activity);
 						for (int i =0; i<connections.size(); i++) {
 							String socket_info = Settings.socketAddress(connections.get(i).getSocket());
-							if(socket_info.compareTo(socketAddress) != 0){
-								connections.get(i).writeMsg(json.toString());
-							}	
+							if(Settings.getLoggedUsers().containsKey(socket_info) ||
+									Settings.getAuthenticatedServers().contains(socket_info)) {
+								connections.get(i).writeMsg(broadcast.toString());	
+							}
 						}	
 					}
 					return false;
 				}
 				else {
 					response.put("command", "INVALID_MESSAGE");
-					response.put("info", "the received message did not contain a command");
+					response.put("info", "the filed username and activity can not be null");
 					con.writeMsg(response.toString());	
 					return true;
 					
@@ -311,14 +324,18 @@ public class Control extends Thread {
 			
 			//ACTIVITY_BROADCAST
 			else if(command.compareTo("ACTIVITY_BROADCAST")==0){
-				
 				//check this connection is from an authenticated server
 				if(Settings.getAuthenticatedServers().contains(socketAddress)) {
 					String activity = (String)json.get("activity");
 					if(activity != null) {
 						//broadcast to connected servers and clients
 						for (int i =0; i<connections.size(); i++) {
+							String socket_info = Settings.socketAddress(connections.get(i).getSocket());
+							if(socket_info.compareTo(socketAddress)!=0 &&
+									(Settings.getLoggedUsers().containsKey(socket_info) ||
+									Settings.getAuthenticatedServers().contains(socket_info))) {
 								connections.get(i).writeMsg(msg);
+							}	
 						}
 						//process activity
 						JSONObject json_activity = (JSONObject) parser.parse(activity);
@@ -338,7 +355,7 @@ public class Control extends Thread {
 				else {
 					JSONObject response = new JSONObject();
 					response.put("command", "INVALID_MESSAGE");
-					response.put("info", "the received message did not contain a command");
+					response.put("info", "the received message from an unathenticated server");
 					con.writeMsg(response.toString());	
 					return true;	
 				}	
@@ -354,12 +371,13 @@ public class Control extends Thread {
 					// if receiving a REGISTER message from a client that has already logged in on this connection
 					if(Settings.getLoggedUsers().containsKey(socketAddress)){
 						response.put("command", "INVALID_MESSAGE");
-						response.put("info", "the received message did not contain a command");
+						response.put("info", "a client that has already logged in on this connection");
 						con.writeMsg(response.toString());	
 						return true;							
 					}
 					// if userName exists in the local storage or a userName is already in lock request list
 					else if(Settings.getUserProfile().containsKey(username)||Settings.getLockRequest().containsValue(username)) {
+						
 						response.put("command", "REGISTER_FAIL");
 						response.put("info", username+" is already registered with the system");
 						con.writeMsg(response.toString());	
@@ -367,10 +385,19 @@ public class Control extends Thread {
 					}
 					// if username not exists in the local storage
 					else {
+						// only one server
+						if(Settings.getAuthenticatedServers().size()==0) {
+							Settings.addUser(username, secret);
+							response.put("command", "REGISTER_SUCCESS");
+							response.put("info", "register success for "+username);
+							con.writeMsg(response.toString());
+							return false;
+						}
 						Settings.addRequestRegister(username, secret); // record userName and secret in waiting list
 						Settings.addRequestSocket(username, socketAddress);; // record userName and socket in waiting list
 						Settings.addLockRequest(username); // record number of lock allowed received  
-						//broadcast lock request 
+						//broadcast lock request to other servers
+						
 						response.put("command", "LOCK_REQUEST");
 						response.put("username", username);
 						response.put("secret", secret); 
@@ -380,19 +407,20 @@ public class Control extends Thread {
 								connections.get(i).writeMsg(response.toString());
 							}	
 						}
+						
 						return false;		
 					}
 				}
 				else {
 					response.put("command", "INVALID_MESSAGE");
-					response.put("info", "the received message did not contain a command");
+					response.put("info", "the filed username and secret can not be null");
 					con.writeMsg(response.toString());	
 					return true;		
 				}
 			}
 			
 			
-			//LOCK_REQUEST
+			// LOCK_REQUEST
 			else if(command.compareTo("LOCK_REQUEST")==0){
 				JSONObject response = new JSONObject();
 				// connection from authenticated server
@@ -441,14 +469,14 @@ public class Control extends Thread {
 					}
 					else {
 						response.put("command", "INVALID_MESSAGE");
-						response.put("info", "the received message did not contain a command");
+						response.put("info", "the filed username and secret can not be null");
 						con.writeMsg(response.toString());	
 						return true;	
 					}
 				}
 				else {
 					response.put("command", "INVALID_MESSAGE");
-					response.put("info", "the received message did not contain a command");
+					response.put("info", "the received message from an unanthenticated server");
 					con.writeMsg(response.toString());	
 					return true;			
 				}		
@@ -496,7 +524,7 @@ public class Control extends Thread {
 					//invalid message
 					else {
 						response.put("command", "INVALID_MESSAGE");
-						response.put("info", "the received message did not contain a command");
+						response.put("info", "the filed username and secret can not be null");
 						con.writeMsg(response.toString());
 						return true;
 						
@@ -505,7 +533,7 @@ public class Control extends Thread {
 				//from unauthenticated server
 				else {
 					response.put("command", "INVALID_MESSAGE");
-					response.put("info", "the received message did not contain a command");
+					response.put("info", "the received message from an unanthenticated server");
 					con.writeMsg(response.toString());
 					return true;	
 				}	
@@ -533,6 +561,8 @@ public class Control extends Thread {
 							if(Settings.getRequestRegisters().get(username).compareTo(secret)==0) {
 								//if receive lock allowed from all other servers
 								if(Settings.getLockRequest().get(username)+1 == Settings.getLoadData().size()) {
+									//register user into local storage
+									Settings.addUser(username, secret);
 									//send REGISTER_SUCCESS to the socket that sent a register
 									for(int k=0; k<connections.size(); k++) {
 										String con_info = Settings.socketAddress(connections.get(k).getSocket());
@@ -544,16 +574,17 @@ public class Control extends Thread {
 											break;
 										}
 									}
+									//remove records for the registry
+									Settings.removeRequestRegister(username);
+									Settings.removeRequestSocket(username);
+									Settings.removeLockRequest(username);
 								}
 								else {
 									//increment on number of lock allowed
 									Settings.addLockAllowed(username);
 									
 								}
-								//remove records for the registry
-								Settings.removeRequestRegister(username);
-								Settings.removeRequestSocket(username);
-								Settings.removeLockRequest(username);
+								
 							}
 						}
 						return false;
@@ -561,7 +592,7 @@ public class Control extends Thread {
 					//invalid message
 					else {
 						response.put("command", "INVALID_MESSAGE");
-						response.put("info", "the received message did not contain a command");
+						response.put("info", "the filed username and secret can not be null");
 						con.writeMsg(response.toString());
 						return true;
 					}
@@ -569,7 +600,7 @@ public class Control extends Thread {
 				//from unauthenticated server
 				else {
 					response.put("command", "INVALID_MESSAGE");
-					response.put("info", "the received message did not contain a command");
+					response.put("info", "the received message from an unauthenticated server");
 					con.writeMsg(response.toString());
 					return true;	
 				}
@@ -584,13 +615,6 @@ public class Control extends Thread {
 				con.writeMsg(response.toString());	
 				return true;	
 			}
-			
-			//Q: Broadcast a LOCK_DENIED to all other servers (between servers only) if the username is already
-			//known to the server with a different secret.
-			//Q: When a server receives this message, it will remove the username from its local storage only if the secret
-			//matches the associated secret in its local storage.
-			//Q: if receiving a REGISTER
-			//message from a client that has already logged in on this connection. Connection is closed by server
 			
 			
 			

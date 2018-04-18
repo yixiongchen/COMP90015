@@ -182,6 +182,17 @@ public class Settings {
 	};
 	
 	/*
+	 * remove a registered client
+	 */
+    public static void removeUser(String username){
+		
+    	if(registered_users.containsKey(username)) {
+    		registered_users.remove(username);
+    	}
+    
+	};
+	
+	/*
 	 * return all pairs (userName, secret) that request to register
 	 */
 	public static Map<String, String> getRequestRegisters(){

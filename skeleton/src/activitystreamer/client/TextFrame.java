@@ -32,6 +32,9 @@ public class TextFrame extends JFrame implements ActionListener {
 	private JTextArea outputText;
 	private JButton sendButton;
 	private JButton disconnectButton;
+	private JButton infoButton;
+	private JButton reconnectButton;
+	private JButton clearButton;
 	private JSONParser parser = new JSONParser();
 	
 	public TextFrame(){
@@ -55,11 +58,20 @@ public class TextFrame extends JFrame implements ActionListener {
 		JPanel buttonGroup = new JPanel();
 		sendButton = new JButton("Send");
 		disconnectButton = new JButton("Disconnect");
+		clearButton = new JButton("Clear");
+		infoButton = new JButton("Example");
+		//reconnectButton = new JButton("Reconnect"); 
 		buttonGroup.add(sendButton);
 		buttonGroup.add(disconnectButton);
+		buttonGroup.add(clearButton);
+		buttonGroup.add(infoButton);
+		//buttonGroup.add(reconnectButton);
 		inputPanel.add(buttonGroup,BorderLayout.SOUTH);
 		sendButton.addActionListener(this);
 		disconnectButton.addActionListener(this);
+		clearButton.addActionListener(this);
+		infoButton.addActionListener(this);
+		//reconnectButton.addActionListener(this);
 		
 		
 		outputText = new JTextArea();
@@ -71,11 +83,12 @@ public class TextFrame extends JFrame implements ActionListener {
 		add(mainPanel);
 		
 		setLocationRelativeTo(null); 
-		setSize(1280,768);
+		setSize(1300,420);
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		setVisible(true);
 	}
 
+	@SuppressWarnings("deprecation")
 	public void setOutputText(final JSONObject obj){
 		Gson gson = new GsonBuilder().setPrettyPrinting().create();
 		JsonParser jp = new JsonParser();
@@ -84,6 +97,7 @@ public class TextFrame extends JFrame implements ActionListener {
 		outputText.setText(prettyJsonString);
 		outputText.revalidate();
 		outputText.repaint();
+		
 	}
 	
 	@Override
@@ -92,14 +106,27 @@ public class TextFrame extends JFrame implements ActionListener {
 			String msg = inputText.getText().trim().replaceAll("\r","").replaceAll("\n","").replaceAll("\t", "");
 			JSONObject obj;
 			try {
+				
 				obj = (JSONObject) parser.parse(msg);
 				ClientSkeleton.getInstance().sendActivityObject(obj);
 			} catch (ParseException e1) {
+				System.out.println(msg);
 				log.error("invalid JSON object entered into input text field, data not sent");
 			}
 			
 		} else if(e.getSource()==disconnectButton){
 			ClientSkeleton.getInstance().disconnect();
+		}
+		else if(e.getSource()==clearButton){
+			inputText.setText(null);
+		}
+		else if (e.getSource()==infoButton){
+			
+			inputText.setText("{\"command\" : \"LOGIN\",\"username\" : \"mengruw3\", \"secret\" : \"woshimeinv\"}");
+		}
+		
+		else {
+			
 		}
 	}
 }
