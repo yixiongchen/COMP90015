@@ -67,7 +67,8 @@ public class Connection extends Thread {
 	public void run(){
 		try {
 			//send authenticate to another server 
-			if(Settings.getRemoteHostname()!=null) {
+			if(Settings.getRemoteHostname()!=null && Settings.getRemoteHostname().compareTo(socket.getInetAddress().getHostName())==0 &&
+					Settings.getRemotePort() == socket.getPort()) {
 				JSONObject json = new JSONObject();
 				json.put("command", "AUTHENTICATE");
 				json.put("secret",Settings.getSecret());
@@ -78,8 +79,9 @@ public class Connection extends Thread {
 			while(!term && (data = inreader.readLine())!=null){
 				term=Control.getInstance().process(this,data);
 			}
-			this.closeCon();
+			
 			log.debug("connection closed to "+Settings.socketAddress(socket));
+			this.closeCon();
 			Control.getInstance().connectionClosed(this);
 			in.close();
 			

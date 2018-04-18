@@ -27,7 +27,13 @@ public class ClientSkeleton extends Thread {
 	private int port = Settings.getRemotePort();
 	private BufferedReader in; 
 	private BufferedWriter out ;
+
 	private boolean term = false;
+	private boolean open = false;
+	private boolean redirect = false;
+	private String redirect_hostname;
+	private long redirect_port;
+
 	
    
 	
@@ -54,9 +60,9 @@ public class ClientSkeleton extends Thread {
 				//process command
 				String command = (String)activityObj.get("command");
 				if(command.compareTo("LOGOUT")==0) {
-					disconnect();
+					term = true;
 				}
-				
+	
 			}
 		}
 		catch (UnknownHostException e) {
@@ -68,15 +74,57 @@ public class ClientSkeleton extends Thread {
 	}
 	
 	
+	public void reconnect() {
+		log.info("Reconnection to "+hostname+": "+port);
+		term = false;
+		initializeConnection();
+		
+	}
 	
-	public void disconnect(){
-		if (clientSocket != null) {
+	public void redirect(String hostname, int port) {
+		log.info("Redirect to "+hostname+": "+port);
+		term = false;
+		redirect = false;
+		this.hostname = hostname;
+		this.port = port;
+		initializeConnection();
+		
+	}
+	
+	/*
+	 * manually disconnect the current connection
+	 */
+	public void invokedisconnect() {
+		if(open) {
+			JSONObject activityObj = new JSONObject();
+			activityObj.put("command", "disconnected");
 			try {
-				in.close();
-				out.close();
+				out.write(activityObj.toString()+"\n");
+				out.flush();
+				term  = true;
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		else {
+			log.info("Connection has alreday been closed");
+		}
+		
+		
+	}
+
+	
+	/*
+	 * disconnection
+	 */
+	public void disconnect() {
+		if (open && clientSocket != null) {
+			try {
 				clientSocket.close();
+				open=false;
 				term = true;
-				log.info("Connection closed successgully");
+				log.info("Connection closed successfully");
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
@@ -84,13 +132,17 @@ public class ClientSkeleton extends Thread {
 		else{
 			log.error("No connections yet");
 		}
-			
 	}
 	
-	public void run(){
+	/*
+	 * initialize a socket connection 
+	 */
+	public void initializeConnection() {
 		try {
+			log.info("start connection");
 			//connect to (hostName, port)
 			clientSocket = new Socket(hostname,port);
+			open = true;
 			//input stream, output stream
 			in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream(), "UTF-8"));
 			out = new BufferedWriter(new OutputStreamWriter(clientSocket.getOutputStream(), "UTF-8"));
@@ -105,40 +157,32 @@ public class ClientSkeleton extends Thread {
 				String command = (String)outputJson.get("command");
 				//REDIRECT
 				if(command.compareTo("REDIRECT")==0) {
-					String newHostname = (String)outputJson.get("hostname");
-					long newPort = (long)outputJson.get("port");
-					disconnect(); //close connection
-					//open a new connection to redirected hostName and port
-					try {
-						clientSocket = new Socket(newHostname,(int)newPort);
-						in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream(), "UTF-8"));
-						out = new BufferedWriter(new OutputStreamWriter(clientSocket.getOutputStream(), "UTF-8"));
-					}catch (UnknownHostException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					} catch (IOException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					} catch (Exception e){
-						e.printStackTrace();
-					}
-						
+					redirect_hostname = (String)outputJson.get("hostname");
+					redirect_port = (long)outputJson.get("port");
+					term = true;
+					redirect = true;
 				}
 				//INVALID_MESSAGE, button to reconnect to the server
 				else if(command.compareTo("INVALID_MESSAGE")==0) {
-					disconnect();
+					
+					term = true;
 				}
 				//AUTEHNTICATION_FAIL, close connection
 				else if(command.compareTo("AUTEHNTICATION_FAIL")==0) {
-					disconnect();
+					
+					term = true;
 					
 				}
 				//LOGIN_FAILED, button to reconnect to the server
 				else if(command.compareTo("LOGIN_FAILED")==0) {
-					disconnect();
-				}
-				
+					
+					term = true;
+				}	
 			}
+			log.info("closing connection on "+hostname+": " +port);
+			disconnect();
+		
+			
 			
 		} catch (UnknownHostException e) {
 			
@@ -152,8 +196,24 @@ public class ClientSkeleton extends Thread {
 			
 			
 		} catch (Exception e){
+			
 			e.printStackTrace();
 		}
+		
+
+		//initialize a redirect connection 
+		if(redirect == true) {
+			redirect(redirect_hostname, (int)redirect_port);
+		}
+		
+		
+	}
+	
+	
+	public void run(){
+		
+			initializeConnection();
+			
 	}
 
 	

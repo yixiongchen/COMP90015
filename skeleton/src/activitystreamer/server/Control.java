@@ -176,8 +176,7 @@ public class Control extends Thread {
 					// userName is anonymous 
 					if(username != null && username.compareTo("anonymous")==0) {
 						// add connect info and user into into logged list
-						Settings.addLoggedUser(socketAddress, "anonymous");
-						Settings.addLoad(); // add one connected client
+						
 						res.put("command", "LOGIN_SUCCESS");
 						res.put("info", "logged in as user anonymous");
 						con.writeMsg(res.toString());
@@ -186,6 +185,8 @@ public class Control extends Thread {
 							con.writeMsg(redir.toString());
 							return true;
 						}
+						Settings.addLoggedUser(socketAddress, "anonymous");
+						Settings.addLoad(); // add one connected client
 					
 						return false;
 					}
@@ -195,9 +196,7 @@ public class Control extends Thread {
 						if(Settings.getUserProfile().containsKey(username)){
 							//secret correct 
 							if(secret!=null && Settings.getUserProfile().get(username).compareTo(secret)==0) {
-								// add connect info and user into into logged list
-								Settings.addLoggedUser(socketAddress, username);
-								Settings.addLoad(); // add one connected client
+								
 								res.put("command", "LOGIN_SUCCESS");
 								res.put("info", "logged in as user "+ username);
 								con.writeMsg(res.toString());
@@ -206,6 +205,9 @@ public class Control extends Thread {
 									con.writeMsg(redir.toString());
 									return true;
 								}
+								// add connect info and user into into logged list
+								Settings.addLoggedUser(socketAddress, username);
+								Settings.addLoad(); // add one connected client
 							
 								return false;
 							}
@@ -326,7 +328,7 @@ public class Control extends Thread {
 			else if(command.compareTo("ACTIVITY_BROADCAST")==0){
 				//check this connection is from an authenticated server
 				if(Settings.getAuthenticatedServers().contains(socketAddress)) {
-					String activity = (String)json.get("activity");
+					JSONObject activity = (JSONObject)json.get("activity");
 					if(activity != null) {
 						//broadcast to connected servers and clients
 						for (int i =0; i<connections.size(); i++) {
@@ -338,8 +340,7 @@ public class Control extends Thread {
 							}	
 						}
 						//process activity
-						JSONObject json_activity = (JSONObject) parser.parse(activity);
-						String authenticated_user = (String)json_activity.get("authenticated_user");
+						String authenticated_user = (String)activity.get("authenticated_user");
 						log.info("Acitivity object: "+activity+" from client: "+authenticated_user);
 						return false;
 					}
@@ -604,6 +605,10 @@ public class Control extends Thread {
 					con.writeMsg(response.toString());
 					return true;	
 				}
+			}
+			
+			else if(command.compareTo("disconnected")==0) {
+				return true;
 			}
 			
 			

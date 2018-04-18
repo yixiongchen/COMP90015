@@ -83,7 +83,7 @@ public class TextFrame extends JFrame implements ActionListener {
 		add(mainPanel);
 		
 		setLocationRelativeTo(null); 
-		setSize(1300,420);
+		setSize(900,420);
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		setVisible(true);
 	}
@@ -115,7 +115,7 @@ public class TextFrame extends JFrame implements ActionListener {
 			}
 			
 		} else if(e.getSource()==disconnectButton){
-			ClientSkeleton.getInstance().disconnect();
+			ClientSkeleton.getInstance().invokedisconnect();
 		}
 		else if(e.getSource()==clearButton){
 			inputText.setText(null);
@@ -125,8 +125,6 @@ public class TextFrame extends JFrame implements ActionListener {
 			inputText.setText("{\"command\" : \"LOGIN\",\"username\" : \"mengruw3\", \"secret\" : \"woshimeinv\"}");
 		}
 		
-		else {
-			
-		}
+		
 	}
 }
