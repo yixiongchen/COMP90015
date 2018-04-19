@@ -214,7 +214,7 @@ public class Control extends Thread {
 							//incorrect secret
 							else {
 								res.put("command", "LOGIN_FAILED");
-								res.put("info",  "attempt to login with wrong secret");
+								res.put("info",  "attempt to login with wrong secret/username");
 								con.writeMsg(res.toString());
 								return true;
 							}
@@ -222,7 +222,7 @@ public class Control extends Thread {
 						//userName is not found
 						else {
 							res.put("command", "LOGIN_FAILED");
-							res.put("info",  "attempt to login with wrong secret");
+							res.put("info",  username+" is not registered");
 							con.writeMsg(res.toString());
 							return true;
 						}
@@ -262,7 +262,7 @@ public class Control extends Thread {
 					// not logged
 					if(!Settings.getLoggedUsers().containsKey(socketAddress)) {
 						response.put("command", "AUTHENTICATION_FAIL");
-						response.put("info", "please log in first");
+						response.put("info", username+" has not logged in");
 						con.writeMsg(response.toString());	
 						return true;
 					}

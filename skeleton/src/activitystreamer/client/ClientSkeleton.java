@@ -34,9 +34,7 @@ public class ClientSkeleton extends Thread {
 	private String redirect_hostname;
 	private long redirect_port;
 
-	
-   
-	
+
 	public static ClientSkeleton getInstance(){
 		if(clientSolution==null){
 			clientSolution = new ClientSkeleton();
@@ -56,13 +54,15 @@ public class ClientSkeleton extends Thread {
 			//write into stream
 			if(!term) {
 				out.write(activityObj.toString()+"\n");
+				log.info("wirte message:"+activityObj.toString());
 				out.flush();
 				//process command
 				String command = (String)activityObj.get("command");
+				
+				//LOGOUT, close connection
 				if(command.compareTo("LOGOUT")==0) {
 					term = true;
 				}
-	
 			}
 		}
 		catch (UnknownHostException e) {
@@ -81,6 +81,9 @@ public class ClientSkeleton extends Thread {
 		
 	}
 	
+	/*
+	 * redirect to a connection with (hostname, port)
+	 */
 	public void redirect(String hostname, int port) {
 		log.info("Redirect to "+hostname+": "+port);
 		term = false;
@@ -116,11 +119,13 @@ public class ClientSkeleton extends Thread {
 
 	
 	/*
-	 * disconnection
+	 * close the socket connection
 	 */
 	public void disconnect() {
 		if (open && clientSocket != null) {
 			try {
+				in.close();
+				out.close();
 				clientSocket.close();
 				open=false;
 				term = true;
@@ -143,12 +148,13 @@ public class ClientSkeleton extends Thread {
 			//connect to (hostName, port)
 			clientSocket = new Socket(hostname,port);
 			open = true;
-			//input stream, output stream
+			//reading from input-stream
 			in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream(), "UTF-8"));
+			//writhing into output-stream
 			out = new BufferedWriter(new OutputStreamWriter(clientSocket.getOutputStream(), "UTF-8"));
 			String received;
 			JSONParser pser = new JSONParser();
-			//keep reading data from input stream
+			//reading data from input-stream
 			while(!term && (received=in.readLine()) != null) {
 				JSONObject outputJson = (JSONObject) pser.parse(received);
 				log.info("message recieved: "+received);
@@ -162,7 +168,7 @@ public class ClientSkeleton extends Thread {
 					term = true;
 					redirect = true;
 				}
-				//INVALID_MESSAGE, button to reconnect to the server
+				//INVALID_MESSAGE,close connection
 				else if(command.compareTo("INVALID_MESSAGE")==0) {
 					
 					term = true;
@@ -173,11 +179,14 @@ public class ClientSkeleton extends Thread {
 					term = true;
 					
 				}
-				//LOGIN_FAILED, button to reconnect to the server
+				//LOGIN_FAILED, close connection
 				else if(command.compareTo("LOGIN_FAILED")==0) {
 					
 					term = true;
-				}	
+				}
+				else {
+					//do nothing
+				}
 			}
 			log.info("closing connection on "+hostname+": " +port);
 			disconnect();
@@ -189,11 +198,9 @@ public class ClientSkeleton extends Thread {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 			
-			
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-			
 			
 		} catch (Exception e){
 			
@@ -201,7 +208,7 @@ public class ClientSkeleton extends Thread {
 		}
 		
 
-		//initialize a redirect connection 
+		//Initialize a redirect connection 
 		if(redirect == true) {
 			redirect(redirect_hostname, (int)redirect_port);
 		}
