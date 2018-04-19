@@ -103,6 +103,7 @@ public class ClientSkeleton extends Thread {
 	 * manually disconnect the current connection
 	 */
 	public void invokedisconnect() {
+		
 		//close input reading stream
 		if(open) {
 			try {
@@ -116,7 +117,7 @@ public class ClientSkeleton extends Thread {
 		else {
 			log.error("Connection has been alreday closed");
 		}
-		
+
 	}
 
 	
@@ -126,6 +127,7 @@ public class ClientSkeleton extends Thread {
 	public void disconnect() {
 		if (open && clientSocket != null) {
 			try {
+				
 				in.close();
 				out.close();
 				clientSocket.close();
