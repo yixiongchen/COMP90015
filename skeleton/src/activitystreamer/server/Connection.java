@@ -55,6 +55,7 @@ public class Connection extends Thread {
 				term=true;
 				inreader.close();
 				out.close();
+				in.close();
 				socket.close();
 			} catch (IOException e) {
 				// already closed?
@@ -83,11 +84,14 @@ public class Connection extends Thread {
 			log.debug("connection closed to "+Settings.socketAddress(socket));
 			this.closeCon();
 			Control.getInstance().connectionClosed(this);
-			in.close();
+		
 			
 		} catch (IOException e) {
 			log.error("connection "+Settings.socketAddress(socket)+" closed with exception: "+e);
 			Control.getInstance().connectionClosed(this);
+			this.closeCon();
+			
+			
 		}
 		open=false;
 	}

@@ -34,7 +34,9 @@ public class ClientSkeleton extends Thread {
 	private String redirect_hostname;
 	private long redirect_port;
 
-
+	
+   
+	
 	public static ClientSkeleton getInstance(){
 		if(clientSolution==null){
 			clientSolution = new ClientSkeleton();
@@ -50,26 +52,30 @@ public class ClientSkeleton extends Thread {
 
 	@SuppressWarnings("unchecked")
 	public void sendActivityObject(JSONObject activityObj) throws ParseException{
-		try {
-			//write into stream
-			if(!term) {
-				out.write(activityObj.toString()+"\n");
-				log.info("wirte message:"+activityObj.toString());
-				out.flush();
-				//process command
-				String command = (String)activityObj.get("command");
-				
-				//LOGOUT, close connection
+		String command = (String)activityObj.get("command");
+		if(open) {
+			try {
+				//LOGOUT
 				if(command.compareTo("LOGOUT")==0) {
-					term = true;
+					term = true; //close connection
+				
 				}
+				//write into stream	
+				out.write(activityObj.toString()+"\n");
+				out.flush();
+			
 			}
+			catch (UnknownHostException e) {
+				e.printStackTrace();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+			
 		}
-		catch (UnknownHostException e) {
-			e.printStackTrace();
-		} catch (IOException e) {
-			e.printStackTrace();
+		else {
+			log.error("Connection has been already closed");
 		}
+		
 		
 	}
 	
@@ -91,29 +97,25 @@ public class ClientSkeleton extends Thread {
 		this.hostname = hostname;
 		this.port = port;
 		initializeConnection();
-		
 	}
 	
 	/*
 	 * manually disconnect the current connection
 	 */
 	public void invokedisconnect() {
+		//close input reading stream
 		if(open) {
-			JSONObject activityObj = new JSONObject();
-			activityObj.put("command", "disconnected");
 			try {
-				out.write(activityObj.toString()+"\n");
-				out.flush();
-				term  = true;
+				clientSocket.shutdownInput();
+				term = true;
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
-			}
+			}	
 		}
 		else {
-			log.info("Connection has alreday been closed");
+			log.error("Connection has been alreday closed");
 		}
-		
 		
 	}
 
@@ -138,6 +140,7 @@ public class ClientSkeleton extends Thread {
 			log.error("No connections yet");
 		}
 	}
+	
 	
 	/*
 	 * initialize a socket connection 
@@ -185,7 +188,7 @@ public class ClientSkeleton extends Thread {
 					term = true;
 				}
 				else {
-					//do nothing
+					//do nothings
 				}
 			}
 			log.info("closing connection on "+hostname+": " +port);
